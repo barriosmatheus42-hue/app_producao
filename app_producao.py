@@ -4,7 +4,7 @@ import pandas as pd
 # 1. Configuração da página
 st.set_page_config(page_title="Painel Gerdau", layout="wide")
 
-# 2. CSS ULTRA-COMPACTO (O visual que você aprovou)
+# 2. CSS ULTRA-COMPACTO
 st.markdown("""
     <style>
     .section-title { font-size: 1.1rem; font-weight: bold; margin-top: 0.2rem; border-bottom: 2px solid #e0e0e0; }
@@ -23,21 +23,31 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. MEMÓRIA DO APP (Persistência básica enquanto o app rodar)
+# 3. DEFINIÇÃO DO ESTADO NATURAL (DEFAULT)
+tus_rodando = ["TU 01", "TU 02", "TU 04", "TU 05", "TU 06", "TU 20", "TU 21", "TU 22", "TU 23", "TU 24"]
+rbs_rodando = ["RB 12", "RB 13", "RB 14", "Barrica 2", "Barrica 3", "Barrica 4"]
+
 if 'tu_data' not in st.session_state:
-    st.session_state.tu_data = pd.DataFrame({
+    df_tu = pd.DataFrame({
         "Máquina": [f"TU {str(i).zfill(2)}" for i in range(1, 25)],
         "Bitola (mm)": [1.20] * 24,
         "Status": ["Desprogramada"] * 24
     })
+    # Aplica o estado "Rodando" para as TUs selecionadas
+    df_tu.loc[df_tu["Máquina"].isin(tus_rodando), "Status"] = "Rodando"
+    st.session_state.tu_data = df_tu
 
 if 'rb_data' not in st.session_state:
-    st.session_state.rb_data = pd.DataFrame({
-        "Equipamento": [f"RB {str(i).zfill(2)}" for i in range(1, 19)] + ["Barrica 2", "Barrica 3", "Barrica 4"],
-        "Bitola (mm)": [1.20] * 21,
-        "Fonte (TU)": ["-"] * 21,
-        "Status": ["Desprogramada"] * 21
+    equipamentos = [f"RB {str(i).zfill(2)}" for i in range(1, 19)] + ["Barrica 2", "Barrica 3", "Barrica 4"]
+    df_rb = pd.DataFrame({
+        "Equipamento": equipamentos,
+        "Bitola (mm)": [1.20] * len(equipamentos),
+        "Fonte (TU)": ["-"] * len(equipamentos),
+        "Status": ["Desprogramada"] * len(equipamentos)
     })
+    # Aplica o estado "Rodando" para as RBs e Barricas selecionadas
+    df_rb.loc[df_rb["Equipamento"].isin(rbs_rodando), "Status"] = "Rodando"
+    st.session_state.rb_data = df_rb
 
 # --- INTERFACE ---
 st.title("🏭 Painel de Produção")
@@ -57,8 +67,6 @@ with st.expander("⚙️ ATUALIZAR DADOS", expanded=False):
                       "Bitola (mm)": st.column_config.SelectboxColumn(options=opcoes_bitola),
                       "Fonte (TU)": st.column_config.SelectboxColumn(options=opcoes_fonte),
                       "Status": st.column_config.SelectboxColumn(options=opcoes_status)})
-    
-    st.info("Os dados acima ficam salvos enquanto a aba estiver aberta.")
 
 # --- CARDS VISUAIS ---
 def get_status_class(status):
@@ -67,18 +75,18 @@ def get_status_class(status):
 # TUs
 st.markdown('<div class="section-title tu">🔵 Trefilas Úmidas</div>', unsafe_allow_html=True)
 df_tu_p = st.session_state.tu_data[st.session_state.tu_data["Status"] != "Desprogramada"]
-cols_tu = '<div class="card-grid">'
+cards_tu = '<div class="card-grid">'
 for _, r in df_tu_p.iterrows():
-    cols_tu += f'<div class="machine-card {get_status_class(r["Status"])}"><div class="machine-name">⚙️ {r["Máquina"]}</div><div class="bitola-value">{r["Bitola (mm)"]:.2f} mm</div></div>'
-st.markdown(cols_tu + '</div>', unsafe_allow_html=True)
+    cards_tu += f'<div class="machine-card {get_status_class(r["Status"])}"><div class="machine-name">⚙️ {r["Máquina"]}</div><div class="bitola-value">{r["Bitola (mm)"]:.2f} mm</div></div>'
+st.markdown(cards_tu + '</div>', unsafe_allow_html=True)
 
 # RBs
 st.markdown('<div class="section-title rb">🟢 Rebobinadores & Barricas</div>', unsafe_allow_html=True)
 df_rb_p = st.session_state.rb_data[st.session_state.rb_data["Status"] != "Desprogramada"]
-cols_rb = '<div class="card-grid">'
+cards_rb = '<div class="card-grid">'
 for _, r in df_rb_p.iterrows():
     icon = "🛢️" if "Barrica" in r['Equipamento'] else "🔄"
-    cols_rb += f'<div class="machine-card {get_status_class(r["Status"])}"><div class="machine-name">{icon} {r["Equipamento"]}</div><div class="bitola-value">{r["Bitola (mm)"]:.2f} mm</div>'
-    if r['Fonte (TU)'] != "-": cols_rb += f'<div class="rb-fonte">F: {r["Fonte (TU)"]}</div>'
-    cols_rb += '</div>'
-st.markdown(cols_rb + '</div>', unsafe_allow_html=True)
+    cards_rb += f'<div class="machine-card {get_status_class(r["Status"])}"><div class="machine-name">{icon} {r["Equipamento"]}</div><div class="bitola-value">{r["Bitola (mm)"]:.2f} mm</div>'
+    if r['Fonte (TU)'] != "-": cards_rb += f'<div class="rb-fonte">F: {r["Fonte (TU)"]}</div>'
+    cards_rb += '</div>'
+st.markdown(cards_rb + '</div>', unsafe_allow_html=True)
